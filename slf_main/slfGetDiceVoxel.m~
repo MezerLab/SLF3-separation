@@ -1,0 +1,33 @@
+function dice = slfGetDiceVoxel(fgSlf3Param,fgSlf3TractSeg,nii,writeFdImg,fdImgFile1,fdImgFile2)
+% slfGetDiceStreamline reutrns the Dice coefficient calculated based on
+% voxel-wise agreement between SLF3 as identified by TractSeg (fg(3))
+% and SLF3 as identified by some local parameter (e.g., FA or T1)
+% nii is used as a reference for creating the fiber density image (we use a
+% high resolution T1 map)
+
+if ~exist(writeFdImg,'var') | isempty(writeFdImg)
+    writeFdImg = false;
+end
+
+normalizeMap = false;
+
+% TractSeg (this is fg without AFQ cleaning)
+fgSlf3TractSeg = fgRetainIndices(fg,slf3IndicesTractseg);
+fdImgTractSeg = dtiComputeFiberDensityNoGUI(fgSlf3TractSeg, nii.qto_xyz, size(nii.data), normalizeMap);
+if writeFdImg
+    fdImgFile = ['/ems/elsc-labs/mezer-a/Mezer-Lab/analysis/SLF_NIFTI/',inside_folder,subNum,'_',hemi,'slf3_TractSeg_clean.nii.gz'] ;% The full path of the saved fdImg nifti file (so it should end with .nii.gz)
+    dtiWriteNiftiWrapper(fdImg,nii.qto_xyz,fdImgFile);
+end
+fdImgTractSeg = double(logical(fdImgTractSeg));
+
+% T1-based SLF-III (this is the final fg, after AFQ cleaning)
+fdImgParam = dtiComputeFiberDensityNoGUI(slf3fg, nii.qto_xyz, size(nii.data), normalizeMap);
+if writeFdImg
+    fdImgFile = ['/ems/elsc-labs/mezer-a/Mezer-Lab/analysis/SLF_NIFTI/',inside_folder,subNum,'_',hemi,'slf3_paramBased.nii.gz'] ;% The full path of the saved fdImg nifti file (so it should end with .nii.gz)
+    dtiWriteNiftiWrapper(fdImg,nii.qto_xyz,fdImgFile);
+end
+fdImgParam = double(logical(fdImgParam));
+
+overlap = length(find(fdImgTractSeg==fdImgParam & fdImgParam==1));
+unite = length(find(fdImgTractSeg==1)) + length(find(fdImgParam==1));
+dice = 2*overlap/unite; %not clipped!!!
